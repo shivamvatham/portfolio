@@ -36,6 +36,41 @@
 
 
   // -------------------------------------------------------------
+  // HELPER: UNIFIED SMOOTH SCROLL TO DESTINATION TARGET
+  // -------------------------------------------------------------
+  function scrollToTarget(target, offset = -60) {
+    if (!target) return;
+    const targetEl = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!targetEl) return;
+
+    // 1. Immediately ensure body and root are unlocked for scrolling
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+
+    // 2. Ensure Lenis is running if stopped
+    if (state.lenis) {
+      state.lenis.start();
+    }
+
+    // 3. Scroll to target element with Lenis or native smooth fallback
+    if (state.lenis && typeof state.lenis.scrollTo === 'function' && !state.prefersReducedMotion) {
+      requestAnimationFrame(() => {
+        state.lenis.scrollTo(targetEl, {
+          offset: offset,
+          duration: 1.0
+        });
+      });
+    } else {
+      const topPos = targetEl.getBoundingClientRect().top + window.pageYOffset + offset;
+      window.scrollTo({
+        top: Math.max(0, topPos),
+        behavior: state.prefersReducedMotion ? 'auto' : 'smooth'
+      });
+    }
+  }
+
+
+  // -------------------------------------------------------------
   // 1. LENIS SMOOTH SCROLLING & GSAP SYNCHRONIZATION
   // -------------------------------------------------------------
   function initLenisScroll() {
@@ -72,8 +107,8 @@
         requestAnimationFrame(raf);
       }
 
-      // Smooth scroll for anchor links with compact offset
-      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+      // Smooth scroll for anchor links with compact offset (excluding mobile drawer links)
+      document.querySelectorAll('a[href^="#"]:not(.mobile-nav-link)').forEach((anchor) => {
         anchor.addEventListener('click', function (e) {
           const targetId = this.getAttribute('href');
           if (targetId && targetId !== '#') {
@@ -81,7 +116,7 @@
             if (targetEl) {
               e.preventDefault();
               soundEngine.play('nav');
-              state.lenis.scrollTo(targetEl, { offset: -54, duration: 1.1 });
+              scrollToTarget(targetEl, -58);
             }
           }
         });
@@ -316,11 +351,11 @@
 
     new Typed('#typed-element', {
       strings: [
-        'Vue.js &amp; Nuxt.js Applications',
+        'Vue.js & Nuxt.js Apps',
+        'High-Performance Web Apps',
         'Scalable Frontend Systems',
-        'React.js User Interfaces',
-        'High-Performance Web Platforms',
-        'Resilient REST API Architectures'
+        'Modern React Interfaces',
+        'Resilient RESTful APIs'
       ],
       typeSpeed: 45,
       backSpeed: 28,
@@ -1223,6 +1258,19 @@ Sent via portfolio contact form.`;
 
     window.addEventListener('scroll', updateScrollSpy, { passive: true });
 
+    function closeMobileMenu() {
+      if (!mobileToggle || !mobileDrawer) return;
+      mobileToggle.classList.remove('open');
+      mobileDrawer.classList.remove('open');
+      mobileToggle.setAttribute('aria-expanded', 'false');
+      mobileDrawer.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      if (state.lenis) {
+        state.lenis.start();
+      }
+    }
+
     if (mobileToggle && mobileDrawer) {
       mobileToggle.addEventListener('click', () => {
         soundEngine.play('click');
@@ -1240,17 +1288,33 @@ Sent via portfolio contact form.`;
       });
 
       mobileLinks.forEach((link) => {
-        link.addEventListener('click', () => {
-          soundEngine.play('nav');
-          mobileToggle.classList.remove('open');
-          mobileDrawer.classList.remove('open');
-          mobileToggle.setAttribute('aria-expanded', 'false');
-          mobileDrawer.setAttribute('aria-hidden', 'true');
-          document.body.style.overflow = '';
-          document.documentElement.style.overflow = '';
-          if (state.lenis) state.lenis.start();
+        link.addEventListener('click', (e) => {
+          const targetId = link.getAttribute('href');
+          if (targetId && targetId.startsWith('#') && targetId !== '#') {
+            const targetEl = document.querySelector(targetId);
+            if (targetEl) {
+              e.preventDefault();
+              soundEngine.play('nav');
+
+              // 1. Immediately close the drawer and unlock page scroll
+              closeMobileMenu();
+
+              // 2. Perform smooth scroll to target after drawer animation begins
+              setTimeout(() => {
+                scrollToTarget(targetEl, -58);
+              }, 60);
+            }
+          }
         });
       });
+
+      // Handle resume button click inside mobile drawer
+      const mobileResumeBtn = mobileDrawer.querySelector('.btn-primary');
+      if (mobileResumeBtn) {
+        mobileResumeBtn.addEventListener('click', () => {
+          closeMobileMenu();
+        });
+      }
     }
   }
 

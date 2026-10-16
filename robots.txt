@@ -1,0 +1,6 @@
+# Robots.txt for Shivam Vatham — Developer Portfolio
+User-agent: *
+Allow: /
+
+# Sitemap reference
+Sitemap: https://shivam.devsload.com/sitemap.xml

@@ -67,17 +67,23 @@ portfolio/
 - **Typed.js**: Animated headline cycling through Shivam's core specialties.
 - **Custom Magnetic Cursor**: Fluid outer ring with lerp trailing, magnetic pull to buttons, and dynamic contextual labels (`EXPLORE`, `DOWNLOAD`, `SAY HI`).
 
-### 5. Content from Resume
-- **Hero Section**: Prominent branding for Shivam Vatham — Software Developer, resume summary, functional CTA buttons, and interactive Mac-style glass terminal card (`shivam.config.js`).
+### 5. Content from Resume & Production Showcase
+- **Hero Section**: Prominent branding for Shivam Vatham — Software Developer, resume summary, functional CTA buttons, and an **interactive developer sandbox** (`shivam.config.js` and live `bash_cli.sh` REPL).
 - **About Me**: Bento-grid layout detailing architectural philosophies, 4 core engineering pillars, live Ahmedabad (IST) digital clock, and language proficiencies (English, Hindi, Gujarati).
 - **Experience**: Scroll-progress timeline highlighting Software Developer role at **PHP Infosec, Ahmedabad** (Nov 2023 – Present).
-- **Projects Showcase**: Interactive category filters (`All`, `Featured & Live`, `Personal`, `Enterprise`):
+- **Projects Showcase**: Interactive category filters (`All Projects (7)`, `Featured & Live (2)`, `Personal`, `Enterprise`):
   - **DevsLoad — Online Tools Platform**: Verified live link (`https://devsload.com`).
-  - **Advocate Management System**: Legal case management system (Vue 3, Vuetify 3, Node, Express, MongoDB).
-  - **GST Billing Platform**: Invoicing and tax compliance engine (Vue 2, Vuetify 2, Express, MongoDB).
+  - **Palak Enterprises — Precision Machine Parts**: Official live corporate platform & 13+ component catalogue (`https://palak-enterprises.in`).
+  - **Advocate Management System (AdvoClock)**: Legal case management system (Vue 3, Vuetify 3, Node, Express, MongoDB).
+  - **Palak Enterprises — GST Billing Platform**: Invoicing and tax compliance engine (Vue 2, Vuetify 2, Express, MongoDB).
   - **PHP Radius**: Bandwidth management and AAA monitoring dashboard (Vue 3, Chart.js, D3.js).
   - **FusionSpot**: Wi-Fi hotspot management and dynamic captive portal (Vue 3, D3.js).
   - **PHP GST**: Enterprise taxation and multi-branch ledger system (Vue 3, Chart.js, D3.js).
+- **Interactive Deep-Dive Modal**: Simulated device viewports (Desktop 💻 / Tablet 📱 / Mobile 📲) with tabbed specs, engineering architecture, and Lighthouse metrics for all projects.
+- **Interactive Command Palette HUD**: Accessible anywhere via `Ctrl+K` or `Cmd+K` for instant spotlight fuzzy search, project navigation, and quick developer actions.
+- **Live Theme Accent Switcher**: Instant switching between 5 ambient color palettes (Cosmic Violet, Solar Orange, Matrix Emerald, Cyber Aqua, Electric Rose) with live Three.js particle recoloring.
+- **Skill-to-Project Cross-Highlighting**: Clicking any skill chip highlights all matching projects with an animated glowing pulse.
+- **Confetti Celebration Engine**: Lightweight 60 FPS canvas particle physics celebrating form submissions and availability milestones.
 - **Skills & Technologies**: Categorized grid with real-time instant search input.
 - **Education & Achievements**: MCA (RBIMS) & BCA (Asia Pacific Institute) timelines alongside top career achievements.
 - **Contact Section**: One-click email copy button with toast notification, phone, location, social links (LinkedIn, GitHub), and validated interactive contact form with mail client integration.

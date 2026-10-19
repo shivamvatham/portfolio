@@ -84,6 +84,22 @@
 
       <!-- Nav Actions -->
       <div class="nav-actions">
+        <!-- Interactive Command Palette Trigger Button -->
+        <button id="hud-trigger-btn" class="nav-action-btn hud-btn" title="Open Command Palette (Ctrl+K)" aria-label="Open Command Palette">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span class="hud-btn-text">Search</span>
+          <kbd class="hud-kbd">Ctrl K</kbd>
+        </button>
+
+        <!-- Live Theme Accent Switcher -->
+        <div class="theme-accent-switcher" id="theme-accent-switcher" role="group" aria-label="Select ambient theme accent">
+          <button class="accent-dot-btn active" data-theme="violet" title="Cosmic Violet &amp; Cyan (Default)" aria-label="Cosmic theme"></button>
+          <button class="accent-dot-btn" data-theme="orange" title="Solar Orange (Palak Enterprises)" aria-label="Solar Orange theme"></button>
+          <button class="accent-dot-btn" data-theme="emerald" title="Matrix Emerald" aria-label="Emerald theme"></button>
+          <button class="accent-dot-btn" data-theme="cyan" title="Cyber Aqua" aria-label="Cyber Aqua theme"></button>
+          <button class="accent-dot-btn" data-theme="rose" title="Electric Rose" aria-label="Electric Rose theme"></button>
+        </div>
+
         <!-- Interactive Sound Toggle -->
         <button id="sound-toggle" class="nav-action-btn sound-btn" title="Toggle UI Sound Effects" aria-label="Toggle Sound Effects">
           <div class="sound-wave-icon" id="sound-wave" aria-hidden="true">
@@ -123,6 +139,9 @@
           <li><a href="#contact" class="mobile-nav-link">Contact</a></li>
         </ul>
         <div class="mobile-nav-footer">
+          <button type="button" class="btn btn-glass btn-full mobile-hud-btn" id="mobile-hud-btn">
+            <i class="fa-solid fa-magnifying-glass"></i> Command Palette (Quick Search)
+          </button>
           <a href="shivam_vatham_CV.pdf" download="Shivam_Vatham_CV.pdf" class="btn btn-primary btn-full">
             <i class="fa-solid fa-download"></i> Download Resume
           </a>
@@ -217,27 +236,41 @@
                 <span class="dot dot-yellow"></span>
                 <span class="dot dot-green"></span>
               </div>
-              <div class="terminal-title">
-                <i class="fa-brands fa-js terminal-file-icon"></i>
-                <span>shivam.config.js</span>
+              <div class="terminal-tabs" role="tablist">
+                <button type="button" class="terminal-tab active" id="tab-btn-config" data-tab="config" role="tab" aria-selected="true">
+                  <i class="fa-brands fa-js terminal-file-icon"></i>
+                  <span>shivam.config.js</span>
+                </button>
+                <button type="button" class="terminal-tab" id="tab-btn-cli" data-tab="cli" role="tab" aria-selected="false">
+                  <i class="fa-solid fa-terminal terminal-file-icon"></i>
+                  <span>interactive_cli.sh</span>
+                  <span class="tab-live-badge"><span class="pulsing-green-dot"></span> LIVE REPL</span>
+                </button>
               </div>
               <button class="terminal-copy-btn" id="terminal-copy-btn" title="Copy snippet" aria-label="Copy code">
                 <i class="fa-regular fa-copy"></i>
               </button>
             </div>
-            <div class="terminal-body">
-              <pre><code><span class="code-keyword">const</span> <span class="code-def">developer</span> = {
+
+            <!-- Tab 1: Config Code View -->
+            <div class="terminal-pane active" id="pane-config">
+              <div class="terminal-body">
+                <pre><code><span class="code-keyword">const</span> <span class="code-def">developer</span> = {
   <span class="code-prop">name</span>: <span class="code-str">"Shivam Vatham"</span>,
   <span class="code-prop">role</span>: <span class="code-str">"Software Developer"</span>,
   <span class="code-prop">experience</span>: <span class="code-str">"3+ Years"</span>,
   <span class="code-prop">location</span>: <span class="code-str">"Ahmedabad, India"</span>,
+  <span class="code-prop">featuredApps</span>: [
+    <span class="code-str">"palak-enterprises.in"</span>,
+    <span class="code-str">"devsload.com"</span>
+  ],
   <span class="code-prop">coreStack</span>: [
     <span class="code-str">"Vue.js 2/3"</span>, <span class="code-str">"Nuxt.js"</span>,
     <span class="code-str">"React.js"</span>, <span class="code-str">"Vuetify"</span>,
     <span class="code-str">"Node.js"</span>, <span class="code-str">"Express.js"</span>
   ],
   <span class="code-prop">impact</span>: {
-    <span class="code-prop">productionApps</span>: <span class="code-num">5</span>,
+    <span class="code-prop">productionApps</span>: <span class="code-num">6</span>,
     <span class="code-prop">apiEndpoints</span>: <span class="code-str">"1000+"</span>,
     <span class="code-prop">reusableComponents</span>: <span class="code-str">"Standardized"</span>
   },
@@ -245,13 +278,42 @@
     <span class="code-keyword">return</span> <span class="code-str">"Building lightning-fast, accessible UIs"</span>;
   }
 };</code></pre>
-            </div>
-            <div class="terminal-footer">
-              <div class="terminal-status">
-                <span class="status-indicator"></span>
-                <span>System: Active &amp; Ready to Deploy</span>
               </div>
-              <span class="terminal-lang">ESNext &middot; UTF-8</span>
+              <div class="terminal-footer">
+                <div class="terminal-status">
+                  <span class="status-indicator"></span>
+                  <span>System: Active &amp; Ready to Deploy</span>
+                </div>
+                <span class="terminal-lang">ESNext &middot; UTF-8</span>
+              </div>
+            </div>
+
+            <!-- Tab 2: Interactive Terminal Shell -->
+            <div class="terminal-pane" id="pane-cli">
+              <div class="terminal-body cli-body" id="cli-output">
+                <div class="cli-line cli-welcome">
+                  <span class="cli-prompt-sym">➜</span> Welcome to <span class="cli-hi">shivam-shell v2.4</span>. Type <span class="cli-cmd-hint">help</span> for commands.
+                </div>
+                <div class="cli-line cli-tip">
+                  <i class="fa-solid fa-lightbulb"></i> Tip: Try running <span class="cli-cmd-pill" data-cli="palak">palak</span> or <span class="cli-cmd-pill" data-cli="hire">hire</span>!
+                </div>
+              </div>
+              <div class="cli-input-row">
+                <span class="cli-prompt">shivam@portfolio:~$</span>
+                <input type="text" id="cli-input" class="cli-input" placeholder="type a command... (e.g. palak, devsload, help)" autocomplete="off" spellcheck="false" aria-label="Interactive terminal input">
+                <button type="button" class="cli-send-btn" id="cli-send-btn" aria-label="Run terminal command">
+                  <i class="fa-solid fa-arrow-turn-down"></i>
+                </button>
+              </div>
+              <div class="cli-quick-chips">
+                <span class="cli-chips-label">Quick:</span>
+                <button type="button" class="cli-chip" data-cli="palak"><i class="fa-solid fa-industry"></i> palak</button>
+                <button type="button" class="cli-chip" data-cli="devsload"><i class="fa-solid fa-rocket"></i> devsload</button>
+                <button type="button" class="cli-chip" data-cli="projects"><i class="fa-solid fa-folder-open"></i> projects</button>
+                <button type="button" class="cli-chip" data-cli="skills"><i class="fa-solid fa-microchip"></i> skills</button>
+                <button type="button" class="cli-chip" data-cli="hire"><i class="fa-solid fa-sparkles"></i> hire</button>
+                <button type="button" class="cli-chip" data-cli="clear"><i class="fa-solid fa-eraser"></i> clear</button>
+              </div>
             </div>
           </div>
 
@@ -295,7 +357,7 @@
               <i class="fa-solid fa-layer-group"></i>
             </div>
             <div class="stat-numbers">
-              <span class="counter" data-target="5">0</span><span class="counter-suffix">+</span>
+              <span class="counter" data-target="6">0</span><span class="counter-suffix">+</span>
             </div>
             <div class="stat-label">Production Web Apps</div>
             <div class="stat-sub">Enterprise &amp; Public Tools</div>
@@ -602,10 +664,10 @@
         <!-- Project Filter Buttons -->
         <div class="project-filters" role="tablist">
           <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">
-            <i class="fa-solid fa-border-all"></i> All Projects (6)
+            <i class="fa-solid fa-border-all"></i> All Projects (7)
           </button>
           <button class="filter-btn" data-filter="featured" role="tab" aria-selected="false">
-            <i class="fa-solid fa-star"></i> Featured &amp; Live
+            <i class="fa-solid fa-star"></i> Featured &amp; Live (2)
           </button>
           <button class="filter-btn" data-filter="personal" role="tab" aria-selected="false">
             <i class="fa-solid fa-laptop-code"></i> Personal &amp; Client Projects
@@ -667,11 +729,11 @@
 
               <!-- Tech Badges -->
               <div class="project-tech">
-                <span class="tech-tag">Nuxt.js</span>
-                <span class="tech-tag">Node.js</span>
-                <span class="tech-tag">Express.js</span>
-                <span class="tech-tag">Tailwind CSS</span>
-                <span class="tech-tag">REST API</span>
+                <span class="tech-tag" data-tech="Nuxt.js">Nuxt.js</span>
+                <span class="tech-tag" data-tech="Node.js">Node.js</span>
+                <span class="tech-tag" data-tech="Express.js">Express.js</span>
+                <span class="tech-tag" data-tech="Tailwind CSS">Tailwind CSS</span>
+                <span class="tech-tag" data-tech="REST APIs">REST API</span>
               </div>
 
               <!-- Action Links -->
@@ -679,7 +741,81 @@
                 <a href="https://devsload.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm magnetic-btn">
                   <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit Live Platform
                 </a>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="devsload">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
                 <span class="verified-link-pill" title="Verified live link"><i class="fa-solid fa-circle-check"></i> Live &amp; Operational</span>
+              </div>
+            </div>
+          </article>
+
+
+          <!-- PROJECT 2: Palak Enterprises (Featured & Live) -->
+          <article class="project-card featured-project" data-category="featured personal">
+            <div class="project-glow"></div>
+            
+            <div class="project-preview-mockup">
+              <div class="mockup-bar">
+                <span class="mock-dot red"></span>
+                <span class="mock-dot yellow"></span>
+                <span class="mock-dot green"></span>
+                <div class="mockup-url">
+                  <i class="fa-solid fa-lock"></i>
+                  <span>https://palak-enterprises.in</span>
+                </div>
+                <span class="live-status-pill"><span class="pulsing-green-dot"></span> Live</span>
+              </div>
+              <div class="mockup-screen-img-wrap" data-lightbox="assets/projects/palak-enterprises.png" data-title="Palak Enterprises — Precision Machine Parts Website (Live Production UI)" title="Click to view full screenshot">
+                <img src="assets/projects/palak-enterprises.png" alt="Palak Enterprises Precision Machine Parts Live Platform Screenshot" class="project-screenshot-img" loading="lazy">
+                <div class="screenshot-overlay">
+                  <span class="view-screen-pill"><i class="fa-solid fa-expand"></i> Verified Production UI</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="project-content">
+              <div class="project-meta-top">
+                <span class="project-type-badge client-badge"><i class="fa-solid fa-industry"></i> Featured Live Platform</span>
+                <span class="project-year">Commercial Production</span>
+              </div>
+
+              <h3 class="project-title">
+                <a href="https://palak-enterprises.in" target="_blank" rel="noopener noreferrer">
+                  Palak Enterprises &mdash; Precision Machine Parts
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </h3>
+
+              <p class="project-description">
+                Architected and developed the official corporate website and interactive digital product catalogue for Palak Enterprises, an industrial precision CNC turning and machine parts manufacturer in Ahmedabad.
+              </p>
+
+              <!-- Resume Highlights -->
+              <ul class="project-highlights">
+                <li><i class="fa-solid fa-check"></i> Engineered high-performance, responsive SSR web platform using Nuxt.js and Vue 3 with sub-second page delivery and modern industrial dark aesthetic.</li>
+                <li><i class="fa-solid fa-check"></i> Built interactive digital catalogue featuring 13+ precision component categories (chain wheels, circular loom parts, stepped shafts, bushes, precision sleeves, flanges).</li>
+                <li><i class="fa-solid fa-check"></i> Implemented dynamic hero component slider, customer RFQ / request-a-quote inquiry pipeline, and Schema.org LocalBusiness SEO optimization.</li>
+              </ul>
+
+              <!-- Tech Badges -->
+              <div class="project-tech">
+                <span class="tech-tag" data-tech="Nuxt.js">Nuxt.js</span>
+                <span class="tech-tag" data-tech="Vue.js 3">Vue.js 3</span>
+                <span class="tech-tag" data-tech="Vite">Vite</span>
+                <span class="tech-tag" data-tech="Modern CSS">Modern CSS</span>
+                <span class="tech-tag" data-tech="Responsive Design">Responsive UI</span>
+                <span class="tech-tag" data-tech="SEO">SEO Schema</span>
+              </div>
+
+              <!-- Action Links -->
+              <div class="project-footer-links">
+                <a href="https://palak-enterprises.in" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm magnetic-btn">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit Live Website
+                </a>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="palak">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
+                <span class="verified-link-pill" title="Verified live domain"><i class="fa-solid fa-circle-check"></i> Live &amp; Operational</span>
               </div>
             </div>
           </article>
@@ -729,23 +865,26 @@
               </ul>
 
               <div class="project-tech">
-                <span class="tech-tag">Vue.js 3</span>
-                <span class="tech-tag">Vuetify 3</span>
-                <span class="tech-tag">Node.js</span>
-                <span class="tech-tag">Express.js</span>
-                <span class="tech-tag">MongoDB</span>
+                <span class="tech-tag" data-tech="Vue.js 3">Vue.js 3</span>
+                <span class="tech-tag" data-tech="Vuetify 3">Vuetify 3</span>
+                <span class="tech-tag" data-tech="Node.js">Node.js</span>
+                <span class="tech-tag" data-tech="Express.js">Express.js</span>
+                <span class="tech-tag" data-tech="MongoDB">MongoDB</span>
               </div>
 
               <div class="project-footer-links">
                 <span class="private-badge" title="Proprietary client solution">
                   <i class="fa-solid fa-lock"></i> Private Repository / Client Deployment
                 </span>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="advoclock">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
               </div>
             </div>
           </article>
 
 
-          <!-- PROJECT 3: GST Billing Platform -->
+          <!-- PROJECT 4: GST Billing Platform -->
           <article class="project-card" data-category="personal">
             <div class="project-glow"></div>
             
@@ -789,23 +928,26 @@
               </ul>
 
               <div class="project-tech">
-                <span class="tech-tag">Vue.js 2</span>
-                <span class="tech-tag">Vuetify 2</span>
-                <span class="tech-tag">Express.js</span>
-                <span class="tech-tag">MongoDB</span>
-                <span class="tech-tag">Node.js</span>
+                <span class="tech-tag" data-tech="Vue.js 2">Vue.js 2</span>
+                <span class="tech-tag" data-tech="Vuetify 2">Vuetify 2</span>
+                <span class="tech-tag" data-tech="Express.js">Express.js</span>
+                <span class="tech-tag" data-tech="MongoDB">MongoDB</span>
+                <span class="tech-tag" data-tech="Node.js">Node.js</span>
               </div>
 
               <div class="project-footer-links">
                 <span class="private-badge" title="Client deployment">
                   <i class="fa-solid fa-lock"></i> Client Deployment &middot; Financial Portal
                 </span>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="gst-billing">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
               </div>
             </div>
           </article>
 
 
-          <!-- PROJECT 4: PHP Radius - Bandwidth Management System -->
+          <!-- PROJECT 5: PHP Radius - Bandwidth Management System -->
           <article class="project-card" data-category="enterprise">
             <div class="project-glow"></div>
             
@@ -860,23 +1002,26 @@
               </ul>
 
               <div class="project-tech">
-                <span class="tech-tag">Vue.js 3</span>
-                <span class="tech-tag">Vuetify 3</span>
-                <span class="tech-tag">Chart.js</span>
-                <span class="tech-tag">D3.js</span>
-                <span class="tech-tag">REST APIs</span>
+                <span class="tech-tag" data-tech="Vue.js 3">Vue.js 3</span>
+                <span class="tech-tag" data-tech="Vuetify 3">Vuetify 3</span>
+                <span class="tech-tag" data-tech="Chart.js">Chart.js</span>
+                <span class="tech-tag" data-tech="D3.js">D3.js</span>
+                <span class="tech-tag" data-tech="REST APIs">REST APIs</span>
               </div>
 
               <div class="project-footer-links">
                 <span class="private-badge" title="Proprietary ISP product">
                   <i class="fa-solid fa-lock"></i> Company Enterprise System (Proprietary)
                 </span>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="php-radius">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
               </div>
             </div>
           </article>
 
 
-          <!-- PROJECT 5: FusionSpot - Wi-Fi Management System / Captive Portal -->
+          <!-- PROJECT 6: FusionSpot - Wi-Fi Management System / Captive Portal -->
           <article class="project-card" data-category="enterprise">
             <div class="project-glow"></div>
             
@@ -928,23 +1073,26 @@
               </ul>
 
               <div class="project-tech">
-                <span class="tech-tag">Vue.js 3</span>
-                <span class="tech-tag">Vuetify 3</span>
-                <span class="tech-tag">Chart.js</span>
-                <span class="tech-tag">D3.js</span>
-                <span class="tech-tag">REST APIs</span>
+                <span class="tech-tag" data-tech="Vue.js 3">Vue.js 3</span>
+                <span class="tech-tag" data-tech="Vuetify 3">Vuetify 3</span>
+                <span class="tech-tag" data-tech="Chart.js">Chart.js</span>
+                <span class="tech-tag" data-tech="D3.js">D3.js</span>
+                <span class="tech-tag" data-tech="REST APIs">REST APIs</span>
               </div>
 
               <div class="project-footer-links">
                 <span class="private-badge" title="Proprietary commercial software">
                   <i class="fa-solid fa-lock"></i> Company Enterprise System (Proprietary)
                 </span>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="fusion-spot">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
               </div>
             </div>
           </article>
 
 
-          <!-- PROJECT 6: PHP GST - Billing Management System -->
+          <!-- PROJECT 7: PHP GST - Billing Management System -->
           <article class="project-card" data-category="enterprise">
             <div class="project-glow"></div>
             
@@ -996,17 +1144,20 @@
               </ul>
 
               <div class="project-tech">
-                <span class="tech-tag">Vue.js 3</span>
-                <span class="tech-tag">Vuetify 3</span>
-                <span class="tech-tag">Chart.js</span>
-                <span class="tech-tag">D3.js</span>
-                <span class="tech-tag">REST APIs</span>
+                <span class="tech-tag" data-tech="Vue.js 3">Vue.js 3</span>
+                <span class="tech-tag" data-tech="Vuetify 3">Vuetify 3</span>
+                <span class="tech-tag" data-tech="Chart.js">Chart.js</span>
+                <span class="tech-tag" data-tech="D3.js">D3.js</span>
+                <span class="tech-tag" data-tech="REST APIs">REST APIs</span>
               </div>
 
               <div class="project-footer-links">
                 <span class="private-badge" title="Proprietary enterprise suite">
                   <i class="fa-solid fa-lock"></i> Company Enterprise System (Proprietary)
                 </span>
+                <button type="button" class="btn btn-outline btn-sm project-specs-btn" data-project="php-gst">
+                  <i class="fa-solid fa-layer-group"></i> Quick Specs
+                </button>
               </div>
             </div>
           </article>
@@ -2015,9 +2166,10 @@
           <div class="footer-links-col">
             <h4 class="col-title">Featured Work</h4>
             <ul>
+              <li><a href="https://palak-enterprises.in" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Palak Enterprises</a></li>
               <li><a href="https://devsload.com" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> DevsLoad Platform</a></li>
               <li><a href="#projects"><i class="fa-solid fa-chevron-right"></i> AdvoClock</a></li>
-              <li><a href="#projects"><i class="fa-solid fa-chevron-right"></i> Palak Enterprises</a></li>
+              <li><a href="#projects"><i class="fa-solid fa-chevron-right"></i> Palak Enterprises (GST)</a></li>
               <li><a href="#projects"><i class="fa-solid fa-chevron-right"></i> PHP Radius AAA</a></li>
               <li><a href="#projects"><i class="fa-solid fa-chevron-right"></i> FusionSpot Wi-Fi</a></li>
             </ul>
@@ -2061,6 +2213,112 @@
 
     </div>
   </footer>
+
+  <!-- ==================== COMMAND PALETTE HUD (Ctrl+K) ==================== -->
+  <div class="command-palette-modal" id="command-palette-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="palette-backdrop" id="palette-backdrop"></div>
+    <div class="palette-dialog">
+      <div class="palette-search-bar">
+        <i class="fa-solid fa-magnifying-glass palette-search-icon"></i>
+        <input type="text" id="palette-input" class="palette-input" placeholder="Type a command or search (e.g. palak, devsload, resume, sound)..." autocomplete="off" spellcheck="false" aria-label="Command search input">
+        <kbd class="palette-esc-badge" id="palette-close-esc">ESC</kbd>
+      </div>
+      <div class="palette-results" id="palette-results" role="listbox">
+        <!-- Rendered dynamically by script.js -->
+      </div>
+      <div class="palette-footer">
+        <div class="palette-shortcuts">
+          <span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> Navigate</span>
+          <span><kbd>&crarr;</kbd> Select</span>
+          <span><kbd>ESC</kbd> Close</span>
+        </div>
+        <div class="palette-status">
+          <span class="pulsing-green-dot"></span> Live Navigation Active
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PROJECT QUICK SPECS & DEVICE PREVIEW MODAL ==================== -->
+  <div class="project-specs-modal" id="project-specs-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="specs-backdrop" id="specs-backdrop"></div>
+    <div class="specs-dialog">
+      <div class="specs-header">
+        <div class="specs-header-title">
+          <span class="specs-tag" id="specs-modal-tag"><i class="fa-solid fa-layer-group"></i> Featured Project</span>
+          <h3 id="specs-modal-title">Palak Enterprises</h3>
+        </div>
+        <div class="specs-header-actions">
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" id="specs-modal-link">
+            <span>Visit Live</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+          <button type="button" class="specs-close-btn" id="specs-close-btn" aria-label="Close project specifications modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Device Viewport Switcher Controls -->
+      <div class="specs-device-bar">
+        <span class="device-bar-label"><i class="fa-solid fa-display"></i> Viewport Simulation:</span>
+        <div class="device-btns" role="tablist">
+          <button type="button" class="device-btn active" data-device="desktop" role="tab" aria-selected="true" title="Desktop View (16:9)">
+            <i class="fa-solid fa-desktop"></i> Desktop
+          </button>
+          <button type="button" class="device-btn" data-device="tablet" role="tab" aria-selected="false" title="Tablet View (4:3)">
+            <i class="fa-solid fa-tablet-screen-button"></i> Tablet
+          </button>
+          <button type="button" class="device-btn" data-device="mobile" role="tab" aria-selected="false" title="Mobile View (9:16)">
+            <i class="fa-solid fa-mobile-screen"></i> Mobile
+          </button>
+        </div>
+      </div>
+
+      <!-- Simulated Device Frame Preview Container -->
+      <div class="specs-preview-container">
+        <div class="device-frame desktop" id="device-frame">
+          <div class="device-frame-bar">
+            <span class="frame-dot red"></span>
+            <span class="frame-dot yellow"></span>
+            <span class="frame-dot green"></span>
+            <div class="frame-url" id="specs-frame-url">https://palak-enterprises.in</div>
+          </div>
+          <div class="device-frame-screen">
+            <img src="" alt="Project Preview Screen" id="specs-frame-img" loading="lazy">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabbed Specifications & Technical Breakdown -->
+      <div class="specs-tabs-wrap">
+        <div class="specs-tab-nav" role="tablist">
+          <button type="button" class="specs-tab-btn active" data-tab="overview" role="tab" aria-selected="true">
+            <i class="fa-solid fa-circle-info"></i> Project Overview
+          </button>
+          <button type="button" class="specs-tab-btn" data-tab="architecture" role="tab" aria-selected="false">
+            <i class="fa-solid fa-network-wired"></i> Architecture &amp; Stack
+          </button>
+          <button type="button" class="specs-tab-btn" data-tab="metrics" role="tab" aria-selected="false">
+            <i class="fa-solid fa-chart-line"></i> Performance &amp; Metrics
+          </button>
+        </div>
+
+        <div class="specs-tab-content active" id="specs-tab-overview">
+          <!-- Overview injected via JS -->
+        </div>
+        <div class="specs-tab-content" id="specs-tab-architecture">
+          <!-- Architecture injected via JS -->
+        </div>
+        <div class="specs-tab-content" id="specs-tab-metrics">
+          <!-- Metrics injected via JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Confetti Particle Celebration Canvas -->
+  <canvas id="confetti-canvas" class="confetti-canvas" aria-hidden="true"></canvas>
 
   <!-- ==================== SCREENSHOT LIGHTBOX MODAL ==================== -->
   <div class="image-lightbox-modal" id="image-lightbox-modal" role="dialog" aria-modal="true" aria-hidden="true">

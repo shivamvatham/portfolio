@@ -13,7 +13,10 @@
     audioCtx: null,
     lenis: null,
     isTouchDevice: window.matchMedia('(hover: none) and (pointer: coarse)').matches,
-    prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    threeParticles: null,
+    threeGeometry: null,
+    activeTheme: 'violet'
   };
 
   // -------------------- INITIALIZATION ON DOM READY --------------------
@@ -32,6 +35,13 @@
     initNavigation();
     initFooter();
     initScreenshotLightbox();
+    initThemeAccentSwitcher();
+    initInteractiveTerminal();
+    initCommandPalette();
+    initProjectSpecsModal();
+    initSkillCrossHighlighting();
+    initConfettiEngine();
+    initAvailabilityEasterEgg();
   });
 
 
@@ -212,6 +222,10 @@
 
     const particles = new THREE.Points(geometry, particleMaterial);
     scene.add(particles);
+
+    // Save particles reference in state for dynamic accent theme switching
+    state.threeParticles = particles;
+    state.threeGeometry = geometry;
 
     // Mouse coordinates tracking
     let targetMouseX = 0;
@@ -1168,6 +1182,7 @@ Sent via portfolio contact form.`;
         window.location.href = mailtoUrl;
 
         showToast('Launching email client with your pre-filled message!', 'success');
+        triggerConfetti();
 
         setTimeout(() => {
           showToast('Message ready to send to shivam.r.vatham@gmail.com', 'info');
@@ -1388,6 +1403,1115 @@ Sent via portfolio contact form.`;
         closeLightbox();
       }
     });
+  }
+
+  // -------------------------------------------------------------
+  // 16. LIVE THEME ACCENT SWITCHER
+  // -------------------------------------------------------------
+  function initThemeAccentSwitcher() {
+    const switcher = document.getElementById('theme-accent-switcher');
+    const dotBtns = document.querySelectorAll('.accent-dot-btn');
+
+    const themes = {
+      violet: {
+        name: 'Cosmic Violet & Cyan (Default)',
+        colors: [0x38bdf8, 0xc084fc, 0x60a5fa]
+      },
+      orange: {
+        name: 'Solar Orange (Palak Enterprises style)',
+        colors: [0xf97316, 0xfbbf24, 0xf59e0b]
+      },
+      emerald: {
+        name: 'Matrix Emerald',
+        colors: [0x10b981, 0x34d399, 0x06b6d4]
+      },
+      cyan: {
+        name: 'Cyber Aqua',
+        colors: [0x06b6d4, 0x22d3ee, 0x0284c7]
+      },
+      rose: {
+        name: 'Electric Rose',
+        colors: [0xf43f5e, 0xfb7185, 0xc084fc]
+      }
+    };
+
+    function setTheme(themeKey, notify = true) {
+      if (!themes[themeKey]) return;
+      state.activeTheme = themeKey;
+
+      if (themeKey === 'violet') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', themeKey);
+      }
+
+      dotBtns.forEach((btn) => {
+        if (btn.getAttribute('data-theme') === themeKey) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      localStorage.setItem('shivam_portfolio_theme', themeKey);
+
+      // Recolor Three.js background particles in real time
+      if (state.threeParticles && state.threeGeometry && typeof THREE !== 'undefined') {
+        const colorsAttr = state.threeGeometry.attributes.color;
+        if (colorsAttr) {
+          const count = colorsAttr.count;
+          const [c1Hex, c2Hex, c3Hex] = themes[themeKey].colors;
+          const color1 = new THREE.Color(c1Hex);
+          const color2 = new THREE.Color(c2Hex);
+          const color3 = new THREE.Color(c3Hex);
+
+          for (let i = 0; i < count; i++) {
+            const rand = Math.random();
+            let mixed;
+            if (rand < 0.5) {
+              mixed = color1.clone().lerp(color3, Math.random());
+            } else {
+              mixed = color3.clone().lerp(color2, Math.random());
+            }
+            colorsAttr.setXYZ(i, mixed.r, mixed.g, mixed.b);
+          }
+          colorsAttr.needsUpdate = true;
+        }
+      }
+
+      if (notify) {
+        soundEngine.play('toggle');
+        showToast(`Theme switched: ${themes[themeKey].name}`, 'info');
+      }
+    }
+
+    // Attach click listeners to dots
+    dotBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-theme');
+        setTheme(key, true);
+      });
+    });
+
+    // Expose globally for Command Palette and Terminal
+    window.setThemeAccent = setTheme;
+    window.cycleTheme = function () {
+      const keys = Object.keys(themes);
+      const currentIndex = keys.indexOf(state.activeTheme);
+      const nextIndex = (currentIndex + 1) % keys.length;
+      setTheme(keys[nextIndex], true);
+    };
+
+    // Load saved preference
+    const savedTheme = localStorage.getItem('shivam_portfolio_theme');
+    if (savedTheme && themes[savedTheme]) {
+      setTheme(savedTheme, false);
+    }
+  }
+
+
+  // -------------------------------------------------------------
+  // 17. INTERACTIVE TERMINAL REPL & TABS
+  // -------------------------------------------------------------
+  function initInteractiveTerminal() {
+    const tabBtnConfig = document.getElementById('tab-btn-config');
+    const tabBtnCli = document.getElementById('tab-btn-cli');
+    const paneConfig = document.getElementById('pane-config');
+    const paneCli = document.getElementById('pane-cli');
+    const cliOutput = document.getElementById('cli-output');
+    const cliInput = document.getElementById('cli-input');
+    const cliSendBtn = document.getElementById('cli-send-btn');
+    const chips = document.querySelectorAll('.cli-chip');
+
+    if (!tabBtnConfig || !tabBtnCli || !paneConfig || !paneCli) return;
+
+    // Tab Switcher
+    function switchTab(tabName) {
+      soundEngine.play('filter');
+      if (tabName === 'config') {
+        tabBtnConfig.classList.add('active');
+        tabBtnConfig.setAttribute('aria-selected', 'true');
+        tabBtnCli.classList.remove('active');
+        tabBtnCli.setAttribute('aria-selected', 'false');
+        paneConfig.classList.add('active');
+        paneCli.classList.remove('active');
+      } else {
+        tabBtnCli.classList.add('active');
+        tabBtnCli.setAttribute('aria-selected', 'true');
+        tabBtnConfig.classList.remove('active');
+        tabBtnConfig.setAttribute('aria-selected', 'false');
+        paneCli.classList.add('active');
+        paneConfig.classList.remove('active');
+        if (cliInput) {
+          setTimeout(() => cliInput.focus(), 80);
+        }
+      }
+    }
+
+    tabBtnConfig.addEventListener('click', () => switchTab('config'));
+    tabBtnCli.addEventListener('click', () => switchTab('cli'));
+
+    // Command History
+    const history = [];
+    let historyIndex = -1;
+
+    function appendOutputLine(htmlContent) {
+      if (!cliOutput) return;
+      const line = document.createElement('div');
+      line.className = 'cli-line';
+      line.innerHTML = htmlContent;
+      cliOutput.appendChild(line);
+      cliOutput.scrollTop = cliOutput.scrollHeight;
+    }
+
+    function runCommand(rawCmd) {
+      const cmd = (rawCmd || '').trim();
+      if (!cmd) return;
+
+      history.push(cmd);
+      historyIndex = history.length;
+
+      // Echo user command
+      appendOutputLine(`<div class="cli-user-command"><span class="cmd-arrow">&gt;</span> <span>${escapeHtml(cmd)}</span></div>`);
+      soundEngine.play('hover');
+
+      const parts = cmd.toLowerCase().split(/\s+/);
+      const action = parts[0];
+      const arg = parts.slice(1).join(' ');
+
+      switch (action) {
+        case 'help':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              Available commands:<br>
+              &bull; <span class="cli-cmd-pill" data-cli="palak">palak</span> &mdash; Palak Enterprises live website details<br>
+              &bull; <span class="cli-cmd-pill" data-cli="devsload">devsload</span> &mdash; DevsLoad online tools platform<br>
+              &bull; <span class="cli-cmd-pill" data-cli="projects">projects</span> &mdash; List all 7 engineering projects<br>
+              &bull; <span class="cli-cmd-pill" data-cli="skills">skills</span> &mdash; Vue.js, Nuxt, React &amp; core technologies<br>
+              &bull; <span class="cli-cmd-pill" data-cli="experience">experience</span> &mdash; Career overview at PHP Infosec<br>
+              &bull; <span class="cli-cmd-pill" data-cli="contact">contact</span> &mdash; Email, phone &amp; socials<br>
+              &bull; <span class="cli-cmd-pill" data-cli="hire">hire</span> &mdash; Say hello &amp; start a project (with confetti!)<br>
+              &bull; <span class="cli-cmd-pill" data-cli="theme orange">theme [color]</span> &mdash; Set theme (orange, emerald, cyan, violet, rose)<br>
+              &bull; <span class="cli-cmd-pill" data-cli="clear">clear</span> &mdash; Clear terminal screen
+            </div>
+          `);
+          break;
+
+        case 'palak':
+        case 'palak-enterprises':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              <span class="cli-output-highlight">&#9881; Palak Enterprises &mdash; Precision Machine Parts Manufacturer</span><br>
+              &bull; <strong>Live URL:</strong> <a href="https://palak-enterprises.in" target="_blank" class="cli-link">https://palak-enterprises.in <i class="fa-solid fa-arrow-up-right-from-square"></i></a><br>
+              &bull; <strong>Stack:</strong> Nuxt.js, Vue 3, Vite, Modern CSS, Schema.org SEO<br>
+              &bull; <strong>Catalogue:</strong> 13+ Precision Product Showcases (Chain wheels, circular loom parts, stepped shafts, bushes, precision sleeves, flanges)<br>
+              &bull; <strong>Features:</strong> Interactive hero slider, dynamic quote inquiry funnel, high-performance SSR rendering.
+            </div>
+          `);
+          break;
+
+        case 'devsload':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              <span class="cli-output-highlight">&#128640; DevsLoad &mdash; Free Online Tools Platform</span><br>
+              &bull; <strong>Live URL:</strong> <a href="https://devsload.com" target="_blank" class="cli-link">https://devsload.com <i class="fa-solid fa-arrow-up-right-from-square"></i></a><br>
+              &bull; <strong>Stack:</strong> Nuxt.js, Node.js, Express.js, Tailwind CSS<br>
+              &bull; <strong>Utilities:</strong> 28+ In-browser engineering tools (DNS/IP probes, QR utilities, subnet calculators).
+            </div>
+          `);
+          break;
+
+        case 'projects':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              <strong>All 7 Projects &amp; Systems:</strong><br>
+              1. <a href="https://palak-enterprises.in" target="_blank" class="cli-link">Palak Enterprises &mdash; Corporate Platform &amp; Parts Catalogue</a> [Live]<br>
+              2. <a href="https://devsload.com" target="_blank" class="cli-link">DevsLoad &mdash; Online Developer Tools</a> [Live]<br>
+              3. <strong>AdvoClock</strong> &mdash; Advocate Case Management System<br>
+              4. <strong>Palak Enterprises</strong> &mdash; GST Billing &amp; Invoicing Platform<br>
+              5. <strong>PHP Radius</strong> &mdash; AAA Bandwidth Telemetry System<br>
+              6. <strong>FusionSpot</strong> &mdash; Wi-Fi Captive Portal &amp; Management<br>
+              7. <strong>PHP GST</strong> &mdash; Enterprise Tax &amp; Multi-Branch Ledgers
+            </div>
+          `);
+          break;
+
+        case 'skills':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              <span class="cli-output-highlight">Core Technical Competencies:</span><br>
+              &bull; <strong>Frontend:</strong> Vue.js 2/3 (Composition API), Nuxt.js, React.js, Vuetify 2/3, Tailwind CSS, Vite<br>
+              &bull; <strong>Backend:</strong> Node.js, Express.js, MongoDB, RESTful APIs, WebSockets<br>
+              &bull; <strong>Data &amp; Animation:</strong> Chart.js, D3.js, GSAP 3, Three.js, Lenis Smooth Scroll
+            </div>
+          `);
+          break;
+
+        case 'experience':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              <span class="cli-output-highlight">Software Developer @ PHP Infosec (Nov 2023 &ndash; Present)</span><br>
+              &bull; 3+ years delivering scalable enterprise web applications.<br>
+              &bull; Engineered ISP bandwidth telemetry, hotspot portals, and accounting engines.<br>
+              &bull; Standardized modular Vue/Nuxt component libraries and high-throughput REST APIs.
+            </div>
+          `);
+          break;
+
+        case 'contact':
+          appendOutputLine(`
+            <div class="cli-output-text">
+              &bull; <strong>Email:</strong> <a href="mailto:shivam.r.vatham@gmail.com" class="cli-link">shivam.r.vatham@gmail.com</a><br>
+              &bull; <strong>Phone:</strong> +91 94089 54477<br>
+              &bull; <strong>Location:</strong> Ahmedabad, Gujarat, India<br>
+              &bull; <strong>GitHub:</strong> github.com/shivamvatham | <strong>LinkedIn:</strong> Shivam Vatham
+            </div>
+          `);
+          break;
+
+        case 'hire':
+          appendOutputLine(`
+            <div class="cli-output-text" style="color: #34d399;">
+              &#127881; <strong>Let's build something extraordinary together!</strong><br>
+              Scrolling to contact section and launching celebration...
+            </div>
+          `);
+          triggerConfetti();
+          soundEngine.play('success');
+          setTimeout(() => scrollToTarget('#contact'), 700);
+          break;
+
+        case 'theme':
+          if (arg && window.setThemeAccent) {
+            window.setThemeAccent(arg, true);
+            appendOutputLine(`<div class="cli-output-text">Theme accent set to <strong>${escapeHtml(arg)}</strong></div>`);
+          } else {
+            appendOutputLine(`<div class="cli-output-text">Usage: <code>theme [orange|emerald|cyan|violet|rose]</code></div>`);
+          }
+          break;
+
+        case 'visit':
+          if (arg.includes('palak')) {
+            window.open('https://palak-enterprises.in', '_blank');
+            appendOutputLine(`<div class="cli-output-text">Opening https://palak-enterprises.in...</div>`);
+          } else if (arg.includes('devsload')) {
+            window.open('https://devsload.com', '_blank');
+            appendOutputLine(`<div class="cli-output-text">Opening https://devsload.com...</div>`);
+          } else {
+            appendOutputLine(`<div class="cli-output-text">Usage: <code>visit palak</code> or <code>visit devsload</code></div>`);
+          }
+          break;
+
+        case 'clear':
+        case 'cls':
+          if (cliOutput) {
+            cliOutput.innerHTML = `
+              <div class="cli-line cli-welcome">
+                <span class="cli-prompt-sym">&#10140;</span> Welcome to <span class="cli-hi">shivam-shell v2.4</span>. Type <span class="cli-cmd-hint">help</span> for commands.
+              </div>
+              <div class="cli-line cli-tip">
+                <i class="fa-solid fa-lightbulb"></i> Tip: Try running <span class="cli-cmd-pill" data-cli="palak">palak</span> or <span class="cli-cmd-pill" data-cli="hire">hire</span>!
+              </div>
+            `;
+          }
+          break;
+
+        default:
+          appendOutputLine(`
+            <div class="cli-output-text" style="color: #f87171;">
+              Command not found: <code>${escapeHtml(cmd)}</code>. Type <span class="cli-cmd-pill" data-cli="help">help</span> for available commands.
+            </div>
+          `);
+          soundEngine.play('error');
+          break;
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    if (cliInput) {
+      cliInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const val = cliInput.value;
+          cliInput.value = '';
+          runCommand(val);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (history.length && historyIndex > 0) {
+            historyIndex--;
+            cliInput.value = history[historyIndex] || '';
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (history.length && historyIndex < history.length - 1) {
+            historyIndex++;
+            cliInput.value = history[historyIndex] || '';
+          } else {
+            historyIndex = history.length;
+            cliInput.value = '';
+          }
+        }
+      });
+    }
+
+    if (cliSendBtn && cliInput) {
+      cliSendBtn.addEventListener('click', () => {
+        const val = cliInput.value;
+        cliInput.value = '';
+        runCommand(val);
+      });
+    }
+
+    // Quick Command Chips Click
+    chips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const cmd = chip.getAttribute('data-cli');
+        if (cmd) {
+          switchTab('cli');
+          runCommand(cmd);
+        }
+      });
+    });
+
+    // Delegate inline cmd pill clicks inside cliOutput
+    if (cliOutput) {
+      cliOutput.addEventListener('click', (e) => {
+        const pill = e.target.closest('.cli-cmd-pill');
+        if (pill) {
+          const cmd = pill.getAttribute('data-cli');
+          if (cmd) {
+            runCommand(cmd);
+          }
+        }
+      });
+    }
+  }
+
+
+  // -------------------------------------------------------------
+  // 18. COMMAND PALETTE HUD (Ctrl+K / Cmd+K)
+  // -------------------------------------------------------------
+  function initCommandPalette() {
+    const modal = document.getElementById('command-palette-modal');
+    const input = document.getElementById('palette-input');
+    const resultsContainer = document.getElementById('palette-results');
+    const triggerBtn = document.getElementById('hud-trigger-btn');
+    const mobileTriggerBtn = document.getElementById('mobile-hud-btn');
+    const backdrop = document.getElementById('palette-backdrop');
+    const escBadge = document.getElementById('palette-close-esc');
+
+    if (!modal || !input || !resultsContainer) return;
+
+    let selectedIndex = 0;
+    let filteredItems = [];
+
+    const items = [
+      // Projects
+      { id: 'proj-palak', title: 'Palak Enterprises — Precision Machine Parts Website', desc: 'https://palak-enterprises.in (Live Client Website)', group: 'Featured Projects', icon: 'fa-industry', action: () => window.open('https://palak-enterprises.in', '_blank') },
+      { id: 'proj-palak-specs', title: 'Palak Enterprises — View Specifications & Viewports', desc: 'Nuxt 3, Vite, 13+ Product Catalogue, SEO Schema', group: 'Featured Projects', icon: 'fa-layer-group', action: () => openProjectSpecs('palak') },
+      { id: 'proj-devsload', title: 'DevsLoad — Online Tools Platform', desc: 'https://devsload.com (Live Independent Platform)', group: 'Featured Projects', icon: 'fa-rocket', action: () => window.open('https://devsload.com', '_blank') },
+      { id: 'proj-devsload-specs', title: 'DevsLoad — View Specifications & Viewports', desc: 'Nuxt.js, Node.js, 28+ Engineering Utilities', group: 'Featured Projects', icon: 'fa-layer-group', action: () => openProjectSpecs('devsload') },
+      { id: 'proj-advoclock', title: 'AdvoClock — Advocate Management System', desc: 'Vue.js 3, Vuetify 3, Node, Express, MongoDB', group: 'Personal Projects', icon: 'fa-scale-balanced', action: () => openProjectSpecs('advoclock') },
+      { id: 'proj-gst', title: 'Palak Enterprises — GST Invoicing Platform', desc: 'Vue.js 2, Vuetify 2, Express, Automated Tax Ledgers', group: 'Personal Projects', icon: 'fa-file-invoice-dollar', action: () => openProjectSpecs('gst-billing') },
+      { id: 'proj-radius', title: 'PHP Radius — Bandwidth Telemetry System', desc: 'Vue 3, Vuetify, Chart.js, D3.js, AAA Infrastructure', group: 'Enterprise Projects', icon: 'fa-tower-broadcast', action: () => openProjectSpecs('php-radius') },
+      { id: 'proj-fusion', title: 'FusionSpot — Wi-Fi Captive Portal', desc: 'Vue 3, Vuetify, Chart.js, OTP Multi-Venue Hotspots', group: 'Enterprise Projects', icon: 'fa-wifi', action: () => openProjectSpecs('fusion-spot') },
+      { id: 'proj-phpgst', title: 'PHP GST — Enterprise Invoicing Suite', desc: 'Vue 3, Vuetify, Multi-Branch Accounting Ledgers', group: 'Enterprise Projects', icon: 'fa-coins', action: () => openProjectSpecs('php-gst') },
+
+      // Navigation
+      { id: 'nav-home', title: 'Jump to Home / Hero Section', desc: 'Developer profile & live interactive terminal', group: 'Navigation', icon: 'fa-house', action: () => scrollToTarget('#hero') },
+      { id: 'nav-about', title: 'Jump to About Me', desc: 'Architectural pillars, IST live clock, languages', group: 'Navigation', icon: 'fa-user', action: () => scrollToTarget('#about') },
+      { id: 'nav-experience', title: 'Jump to Work Experience', desc: 'PHP Infosec Software Developer milestone timeline', group: 'Navigation', icon: 'fa-briefcase', action: () => scrollToTarget('#experience') },
+      { id: 'nav-projects', title: 'Jump to Projects Showcase', desc: 'All 7 production & client applications', group: 'Navigation', icon: 'fa-code', action: () => scrollToTarget('#projects') },
+      { id: 'nav-skills', title: 'Jump to Technical Expertise', desc: 'Vue 3, Nuxt, React, Node, MongoDB, D3', group: 'Navigation', icon: 'fa-microchip', action: () => scrollToTarget('#skills') },
+      { id: 'nav-education', title: 'Jump to Education & Certifications', desc: 'MCA, BCA, and engineering milestones', group: 'Navigation', icon: 'fa-graduation-cap', action: () => scrollToTarget('#education') },
+      { id: 'nav-contact', title: 'Jump to Contact Section', desc: 'Reach out for full-time roles & projects', group: 'Navigation', icon: 'fa-paper-plane', action: () => scrollToTarget('#contact') },
+
+      // Quick Actions
+      { id: 'act-email', title: 'Copy Email Address (shivam.r.vatham@gmail.com)', desc: 'Instant clipboard copy with toast confirmation', group: 'Quick Actions', icon: 'fa-envelope', action: () => copyEmailDirect() },
+      { id: 'act-resume', title: 'Download Resume (PDF)', desc: 'Official Shivam Vatham CV document', group: 'Quick Actions', icon: 'fa-file-arrow-down', action: () => downloadResumeDirect() },
+      { id: 'act-sound', title: 'Toggle UI Web Audio Sound Effects', desc: 'Switch synthesizer audio engine on/off', group: 'Quick Actions', icon: 'fa-volume-high', action: () => toggleSoundDirect() },
+      { id: 'act-theme', title: 'Cycle Ambient Glow Theme', desc: 'Switch between Violet, Solar Orange, Emerald, Cyan, Rose', group: 'Quick Actions', icon: 'fa-palette', action: () => window.cycleTheme && window.cycleTheme() },
+      { id: 'act-confetti', title: 'Launch Celebration Confetti 🎊', desc: 'Sparkling particle burst animation', group: 'Quick Actions', icon: 'fa-sparkles', action: () => triggerConfetti() }
+    ];
+
+    function openPalette() {
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      input.value = '';
+      selectedIndex = 0;
+      renderResults('');
+      soundEngine.play('filter');
+      setTimeout(() => input.focus(), 60);
+    }
+
+    function closePalette() {
+      if (!modal.classList.contains('active')) return;
+      modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      soundEngine.play('click');
+    }
+
+    function renderResults(query) {
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        filteredItems = [...items];
+      } else {
+        filteredItems = items.filter((item) =>
+          item.title.toLowerCase().includes(q) ||
+          item.desc.toLowerCase().includes(q) ||
+          item.group.toLowerCase().includes(q)
+        );
+      }
+
+      if (selectedIndex >= filteredItems.length) {
+        selectedIndex = Math.max(0, filteredItems.length - 1);
+      }
+
+      if (!filteredItems.length) {
+        resultsContainer.innerHTML = `
+          <div class="palette-empty">
+            <i class="fa-solid fa-magnifying-glass" style="font-size: 1.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
+            <p>No commands or projects matching "<strong>${escapePalette(query)}</strong>"</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group by group name
+      let html = '';
+      let currentGroup = '';
+
+      filteredItems.forEach((item, index) => {
+        if (item.group !== currentGroup) {
+          currentGroup = item.group;
+          html += `<div class="palette-group-title">${currentGroup}</div>`;
+        }
+
+        const isSelected = index === selectedIndex;
+        html += `
+          <div class="palette-item ${isSelected ? 'selected' : ''}" data-index="${index}" role="option" aria-selected="${isSelected}">
+            <div class="palette-item-left">
+              <i class="fa-solid ${item.icon} palette-item-icon"></i>
+              <div>
+                <div style="font-weight: 600; color: #fff;">${item.title}</div>
+                <div style="font-size: 0.74rem; color: #94a3b8;">${item.desc}</div>
+              </div>
+            </div>
+            <span class="palette-item-tag">${item.group}</span>
+          </div>
+        `;
+      });
+
+      resultsContainer.innerHTML = html;
+    }
+
+    function escapePalette(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function executeItem(index) {
+      const item = filteredItems[index];
+      if (item && typeof item.action === 'function') {
+        closePalette();
+        soundEngine.play('nav');
+        setTimeout(() => item.action(), 100);
+      }
+    }
+
+    function copyEmailDirect() {
+      navigator.clipboard.writeText('shivam.r.vatham@gmail.com').then(() => {
+        soundEngine.play('copy');
+        showToast('Email address copied: shivam.r.vatham@gmail.com', 'success');
+      });
+    }
+
+    function downloadResumeDirect() {
+      const link = document.createElement('a');
+      link.href = 'shivam_vatham_CV.pdf';
+      link.download = 'Shivam_Vatham_CV.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Downloading Shivam Vatham CV (PDF)...', 'info');
+    }
+
+    function toggleSoundDirect() {
+      const soundBtn = document.getElementById('sound-toggle');
+      if (soundBtn) soundBtn.click();
+    }
+
+    // Input Search Listener
+    input.addEventListener('input', () => {
+      selectedIndex = 0;
+      renderResults(input.value);
+    });
+
+    // Keyboard Navigation within Palette
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filteredItems.length) {
+          selectedIndex = (selectedIndex + 1) % filteredItems.length;
+          renderResults(input.value);
+          ensureItemVisible();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filteredItems.length) {
+          selectedIndex = (selectedIndex - 1 + filteredItems.length) % filteredItems.length;
+          renderResults(input.value);
+          ensureItemVisible();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeItem(selectedIndex);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closePalette();
+      }
+    });
+
+    function ensureItemVisible() {
+      const selectedEl = resultsContainer.querySelector('.palette-item.selected');
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    // Click on item
+    resultsContainer.addEventListener('click', (e) => {
+      const itemEl = e.target.closest('.palette-item');
+      if (itemEl) {
+        const idx = parseInt(itemEl.getAttribute('data-index'), 10);
+        executeItem(idx);
+      }
+    });
+
+    // Global Keydown Listener (Ctrl+K or Cmd+K)
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (modal.classList.contains('active')) {
+          closePalette();
+        } else {
+          openPalette();
+        }
+      }
+    });
+
+    if (triggerBtn) triggerBtn.addEventListener('click', openPalette);
+    if (mobileTriggerBtn) mobileTriggerBtn.addEventListener('click', openPalette);
+    if (backdrop) backdrop.addEventListener('click', closePalette);
+    if (escBadge) escBadge.addEventListener('click', closePalette);
+  }
+
+
+  // -------------------------------------------------------------
+  // 19. PROJECT QUICK SPECS & DEVICE PREVIEW MODAL
+  // -------------------------------------------------------------
+  const projectsData = {
+    palak: {
+      title: 'Palak Enterprises — Precision Machine Parts',
+      tag: 'Featured Live Client Platform',
+      url: 'https://palak-enterprises.in',
+      displayUrl: 'https://palak-enterprises.in',
+      screenshot: 'assets/projects/palak-enterprises.png',
+      isLive: true,
+      overview: {
+        summary: 'Official corporate website and interactive digital product catalogue engineered for Palak Enterprises, an Ahmedabad-based leader in precision CNC turning, chain wheels, and machine components.',
+        challenge: 'The client needed a modern, ultra-fast web presence to showcase their comprehensive catalogue of 13+ industrial components to nationwide machinery manufacturers, with frictionless quote inquiry generation and high local search ranking.',
+        solution: 'Architected a lightweight Nuxt.js/Vue 3 SSR application delivering lightning-fast page transitions, an interactive hero slideshow showcasing manufactured parts, categorized component galleries, and Schema.org LocalBusiness structured data for search engine visibility.'
+      },
+      architecture: {
+        frontend: 'Nuxt.js & Vue 3 with Composition API for modular, component-driven UI architecture.',
+        styling: 'Custom modern CSS design system with industrial obsidian theme, warm amber/orange highlights, and glassmorphic elevations.',
+        performance: 'Pre-rendered static assets, responsive WebP image pipelines, and async component hydration ensuring 98+ Lighthouse score.',
+        seo: 'Full Schema.org LocalBusiness markup, OpenGraph social cards, dynamic sitemaps, and optimized semantic HTML tags.'
+      },
+      metrics: [
+        { label: 'Lighthouse Performance', value: '98/100', icon: 'fa-gauge-high' },
+        { label: 'Component Lines Cataloged', value: '13+ Types', icon: 'fa-gears' },
+        { label: 'Average Page Load Time', value: '< 650 ms', icon: 'fa-bolt' },
+        { label: 'SEO & Accessibility Score', value: '100%', icon: 'fa-shield-halved' }
+      ]
+    },
+    devsload: {
+      title: 'DevsLoad — Online Tools Platform',
+      tag: 'Featured Live Platform',
+      url: 'https://devsload.com',
+      displayUrl: 'https://devsload.com',
+      screenshot: 'assets/projects/devsload.png',
+      isLive: true,
+      overview: {
+        summary: 'Comprehensive multi-tool developer web platform offering zero-latency utilities for web development, network diagnostics, QR codes, subnet calculators, and media utilities.',
+        challenge: 'Building a multi-utility platform that executes complex diagnostics, calculations, and conversions directly in the browser without server bottlenecking or sacrificing data privacy.',
+        solution: 'Engineered an in-browser sandbox architecture in Nuxt.js where calculations and diagnostics run entirely client-side with instant cold-start and zero user tracking.'
+      },
+      architecture: {
+        frontend: 'Nuxt.js with modular tool routing and dynamic lazy-loaded utility micro-frontends.',
+        backend: 'Node.js / Express microservices for DNS, IP geolocation, and remote header probes.',
+        privacy: '100% zero-log architecture where user inputs and parsed files never leave client memory.'
+      },
+      metrics: [
+        { label: 'Active Developer Tools', value: '28+ Utilities', icon: 'fa-toolbox' },
+        { label: 'Cold-Start Latency', value: '0 ms', icon: 'fa-bolt' },
+        { label: 'Client Privacy', value: '100% In-Browser', icon: 'fa-lock' },
+        { label: 'Global Languages', value: '3 Languages', icon: 'fa-globe' }
+      ]
+    },
+    advoclock: {
+      title: 'AdvoClock — Advocate Management System',
+      tag: 'Legal Tech Solution',
+      url: '#',
+      displayUrl: 'advoclock.app',
+      screenshot: 'assets/projects/advoclock.png',
+      isLive: false,
+      overview: {
+        summary: 'End-to-end legal case management and calendar scheduling platform tailored for practicing advocates and law firms to streamline daily judicial operations.',
+        challenge: 'Lawyers struggled with fragmented paper diaries, missed court date notices, and disorganized client filing records across multi-bench courts.',
+        solution: 'Constructed an integrated case tracker with court hearing alerts, client expense ledgers, and centralized digital document management.'
+      },
+      architecture: {
+        frontend: 'Vue.js 3 + Vuetify 3 with reactive case status tables and calendar schedule viewports.',
+        backend: 'Express.js REST APIs with MongoDB indexes for rapid case number and party queries.'
+      },
+      metrics: [
+        { label: 'Case Lookup Speed', value: '< 120 ms', icon: 'fa-gauge-high' },
+        { label: 'Schedule Automation', value: '100% Automated', icon: 'fa-calendar-check' },
+        { label: 'Component Modularity', value: '35+ Components', icon: 'fa-cubes' }
+      ]
+    },
+    'gst-billing': {
+      title: 'Palak Enterprises — GST Invoicing Platform',
+      tag: 'FinTech & Invoicing',
+      url: '#',
+      displayUrl: 'palak-enterprises.internal',
+      screenshot: 'assets/projects/gst-billing.png',
+      isLive: false,
+      overview: {
+        summary: 'GST-compliant billing and invoice generation platform that automates tax compliance, itemized ledger entries, and payment reconciliations.',
+        challenge: 'Manual spreadsheet accounting caused tax calculation discrepancies, delayed payment reconciliations, and cumbersome quarterly filing.',
+        solution: 'Built an automated billing system with automatic SGST/CGST/IGST tax splits, client ledgers, and 1-click printable PDF invoices.'
+      },
+      architecture: {
+        frontend: 'Vue.js 2 with Vuetify components for clean, dense accounting data grids.',
+        backend: 'Node/Express invoice aggregation pipeline with PDF report generation.'
+      },
+      metrics: [
+        { label: 'Tax Calculation Error', value: '0% Automated', icon: 'fa-circle-check' },
+        { label: 'Invoice Generation', value: '< 2 Seconds', icon: 'fa-file-invoice' },
+        { label: 'Monthly Overhead Saved', value: '40+ Hours', icon: 'fa-clock' }
+      ]
+    },
+    'php-radius': {
+      title: 'PHP Radius — Bandwidth Management System',
+      tag: 'Telecom Infrastructure',
+      url: '#',
+      displayUrl: 'radius.phpinfosec.enterprise',
+      screenshot: '',
+      isLive: false,
+      overview: {
+        summary: 'High-scale AAA (Authentication, Authorization, and Accounting) bandwidth management and subscriber policy system developed at PHP Infosec.',
+        challenge: 'ISPs handling thousands of concurrent subscribers needed low-latency visual telemetry for live traffic bursts, quota enforcement, and node outages.',
+        solution: 'Developed dynamic D3.js and Chart.js dashboards in Vue 3 that render thousands of live data points with 60 FPS performance.'
+      },
+      architecture: {
+        frontend: 'Vue.js 3 with canvas-optimized chart rendering for real-time throughput metrics.',
+        telecom: 'Integration with RADIUS protocol servers and enterprise database backends.'
+      },
+      metrics: [
+        { label: 'Peak ISP Throughput', value: '10 Gbps Trunk', icon: 'fa-network-wired' },
+        { label: 'Dashboard Frame Rate', value: '60 FPS', icon: 'fa-gauge-high' },
+        { label: 'Concurrent Sessions', value: '10,000+ Users', icon: 'fa-users' }
+      ]
+    },
+    'fusion-spot': {
+      title: 'FusionSpot — Wi-Fi Management & Captive Portal',
+      tag: 'Enterprise Hotspot Suite',
+      url: '#',
+      displayUrl: 'fusionspot.hotspot.enterprise',
+      screenshot: '',
+      isLive: false,
+      overview: {
+        summary: 'Enterprise Wi-Fi hotspot management system and dynamic captive portal platform engineered for hospitality, corporate campuses, and public venue networks.',
+        challenge: 'Multi-venue hotspot operations required customized tenant branding, OTP authentication, and tamper-proof bandwidth accounting.',
+        solution: 'Crafted a white-labelable captive portal engine and administrator management console in Vue 3 with voucher management and real-time visitor demographics.'
+      },
+      architecture: {
+        frontend: 'Responsive mobile-first captive portal and deep analytics console.',
+        security: 'Rate-limiting, SMS OTP verification, and time-based access control.'
+      },
+      metrics: [
+        { label: 'Active Hotspots Managed', value: '4,850+ Venues', icon: 'fa-wifi' },
+        { label: 'Captive Portal Uptime', value: '99.9%', icon: 'fa-shield-halved' }
+      ]
+    },
+    'php-gst': {
+      title: 'PHP GST — Enterprise Billing Suite',
+      tag: 'Enterprise FinTech',
+      url: '#',
+      displayUrl: 'gst-enterprise.phpinfosec.app',
+      screenshot: '',
+      isLive: false,
+      overview: {
+        summary: 'Enterprise billing and taxation management software suite designed to streamline multi-company accounts, tax invoices, and accounting compliance.',
+        challenge: 'Multi-branch organizations needed consolidated tax summaries and automated ledger reconciliations across disparate business entities.',
+        solution: 'Built high-throughput ledger tables, multi-company accounting switcher, and automatic tax return calculation modules in Vue 3.'
+      },
+      architecture: {
+        frontend: 'Vue 3 component library with virtual scrolling for tables exceeding 100k rows.',
+        reports: 'Dynamic financial health visualizations with Chart.js and high-res PDF generation.'
+      },
+      metrics: [
+        { label: 'GST Accuracy Match', value: '100% Verified', icon: 'fa-calculator' },
+        { label: 'Multi-Branch Support', value: 'Unlimited', icon: 'fa-building' }
+      ]
+    }
+  };
+
+  function openProjectSpecs(projectId) {
+    const data = projectsData[projectId];
+    if (!data) return;
+
+    const modal = document.getElementById('project-specs-modal');
+    const tagEl = document.getElementById('specs-modal-tag');
+    const titleEl = document.getElementById('specs-modal-title');
+    const linkEl = document.getElementById('specs-modal-link');
+    const frameUrlEl = document.getElementById('specs-frame-url');
+    const frameImgEl = document.getElementById('specs-frame-img');
+    const deviceFrame = document.getElementById('device-frame');
+
+    const tabOverview = document.getElementById('specs-tab-overview');
+    const tabArchitecture = document.getElementById('specs-tab-architecture');
+    const tabMetrics = document.getElementById('specs-tab-metrics');
+
+    if (tagEl) tagEl.innerHTML = `<i class="fa-solid fa-layer-group"></i> ${data.tag}`;
+    if (titleEl) titleEl.textContent = data.title;
+    if (frameUrlEl) frameUrlEl.textContent = data.displayUrl;
+
+    if (linkEl) {
+      if (data.isLive) {
+        linkEl.href = data.url;
+        linkEl.style.display = 'inline-flex';
+        linkEl.innerHTML = `<span>Visit Live</span> <i class="fa-solid fa-arrow-up-right-from-square"></i>`;
+      } else {
+        linkEl.style.display = 'none';
+      }
+    }
+
+    if (frameImgEl) {
+      if (data.screenshot) {
+        frameImgEl.src = data.screenshot;
+        frameImgEl.style.display = 'block';
+      } else {
+        frameImgEl.src = 'assets/projects/devsload.png';
+        frameImgEl.style.display = 'block';
+      }
+    }
+
+    // Populate Overview Tab
+    if (tabOverview) {
+      tabOverview.innerHTML = `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-file-lines" style="color: var(--accent-cyan);"></i> Executive Summary</div>
+          <p>${data.overview.summary}</p>
+        </div>
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-amber);"></i> Engineering Challenge</div>
+          <p>${data.overview.challenge}</p>
+        </div>
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-lightbulb" style="color: #34d399;"></i> Architectural Solution</div>
+          <p>${data.overview.solution}</p>
+        </div>
+      `;
+    }
+
+    // Populate Architecture Tab
+    if (tabArchitecture) {
+      tabArchitecture.innerHTML = `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> Frontend Engineering</div>
+          <p>${data.architecture.frontend}</p>
+        </div>
+        ${data.architecture.styling ? `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-palette" style="color: var(--accent-violet);"></i> Design System &amp; CSS</div>
+          <p>${data.architecture.styling}</p>
+        </div>` : ''}
+        ${data.architecture.backend ? `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-server" style="color: var(--accent-blue);"></i> Backend Services</div>
+          <p>${data.architecture.backend}</p>
+        </div>` : ''}
+        ${data.architecture.performance ? `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-bolt" style="color: var(--accent-amber);"></i> Performance Optimization</div>
+          <p>${data.architecture.performance}</p>
+        </div>` : ''}
+        ${data.architecture.seo ? `
+        <div class="specs-section-box">
+          <div class="specs-section-title"><i class="fa-solid fa-globe" style="color: #34d399;"></i> Search Engine Optimization (SEO)</div>
+          <p>${data.architecture.seo}</p>
+        </div>` : ''}
+      `;
+    }
+
+    // Populate Metrics Tab
+    if (tabMetrics) {
+      tabMetrics.innerHTML = `
+        <div class="specs-metric-grid">
+          ${data.metrics.map(m => `
+            <div class="specs-metric-card">
+              <i class="fa-solid ${m.icon}" style="font-size: 1.2rem; color: var(--accent-cyan); margin-bottom: 6px;"></i>
+              <div class="specs-metric-val">${m.value}</div>
+              <div class="specs-metric-lbl">${m.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // Reset device frame to desktop
+    if (deviceFrame) {
+      deviceFrame.className = 'device-frame desktop';
+    }
+    document.querySelectorAll('.device-btn').forEach((b, idx) => {
+      if (idx === 0) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
+    // Reset tabs to overview
+    document.querySelectorAll('.specs-tab-btn').forEach((b, idx) => {
+      if (idx === 0) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    if (tabOverview) tabOverview.classList.add('active');
+    if (tabArchitecture) tabArchitecture.classList.remove('active');
+    if (tabMetrics) tabMetrics.classList.remove('active');
+
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    soundEngine.play('filter');
+  }
+
+  function initProjectSpecsModal() {
+    const modal = document.getElementById('project-specs-modal');
+    const closeBtn = document.getElementById('specs-close-btn');
+    const backdrop = document.getElementById('specs-backdrop');
+    const deviceBtns = document.querySelectorAll('.device-btn');
+    const tabBtns = document.querySelectorAll('.specs-tab-btn');
+    const deviceFrame = document.getElementById('device-frame');
+
+    if (!modal) return;
+
+    function closeSpecs() {
+      if (!modal.classList.contains('active')) return;
+      modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      soundEngine.play('click');
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', closeSpecs);
+    if (backdrop) backdrop.addEventListener('click', closeSpecs);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closeSpecs();
+      }
+    });
+
+    // Device Viewport Switcher
+    deviceBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        soundEngine.play('hover');
+        deviceBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const device = btn.getAttribute('data-device');
+        if (deviceFrame) {
+          deviceFrame.className = `device-frame ${device}`;
+        }
+      });
+    });
+
+    // Specs Tab Switcher
+    tabBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        soundEngine.play('filter');
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const targetTab = btn.getAttribute('data-tab');
+
+        const tabOverview = document.getElementById('specs-tab-overview');
+        const tabArchitecture = document.getElementById('specs-tab-architecture');
+        const tabMetrics = document.getElementById('specs-tab-metrics');
+
+        if (tabOverview) tabOverview.classList.toggle('active', targetTab === 'overview');
+        if (tabArchitecture) tabArchitecture.classList.toggle('active', targetTab === 'architecture');
+        if (tabMetrics) tabMetrics.classList.toggle('active', targetTab === 'metrics');
+      });
+    });
+
+    // Delegate click to all .project-specs-btn
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.project-specs-btn');
+      if (btn) {
+        e.preventDefault();
+        const pId = btn.getAttribute('data-project');
+        if (pId) {
+          openProjectSpecs(pId);
+        }
+      }
+    });
+  }
+
+
+  // -------------------------------------------------------------
+  // 20. SKILL -> PROJECT CROSS-HIGHLIGHTING
+  // -------------------------------------------------------------
+  function initSkillCrossHighlighting() {
+    // When a tech tag is clicked, pulse all matching project cards
+    document.addEventListener('click', (e) => {
+      const tag = e.target.closest('.tech-tag[data-tech], .skill-tag, .flagship-pill');
+      if (!tag) return;
+
+      const techName = tag.getAttribute('data-tech') || tag.textContent.trim();
+      if (!techName) return;
+
+      const cards = document.querySelectorAll('.project-card');
+      let matchCount = 0;
+
+      cards.forEach((card) => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(techName.toLowerCase())) {
+          matchCount++;
+          card.classList.add('highlight-pulse');
+          setTimeout(() => {
+            card.classList.remove('highlight-pulse');
+          }, 3600);
+        }
+      });
+
+      if (matchCount > 0) {
+        soundEngine.play('filter');
+        showToast(`Found ${matchCount} projects built with ${techName}!`, 'success');
+        scrollToTarget('#projects', -60);
+      }
+    });
+  }
+
+
+  // -------------------------------------------------------------
+  // 21. ULTRA-LIGHTWEIGHT CANVAS CONFETTI ENGINE
+  // -------------------------------------------------------------
+  function initConfettiEngine() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId = null;
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function triggerConfetti() {
+      if (state.prefersReducedMotion) return;
+      resize();
+
+      const particleCount = state.isTouchDevice ? 60 : 110;
+      const palette = ['#00f2fe', '#38bdf8', '#c084fc', '#f97316', '#fbbf24', '#10b981', '#f43f5e', '#ffffff'];
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: window.innerWidth * (0.3 + Math.random() * 0.4),
+          y: window.innerHeight * 0.4,
+          vx: (Math.random() - 0.5) * 18,
+          vy: -Math.random() * 16 - 6,
+          size: Math.random() * 8 + 4,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 12,
+          opacity: 1,
+          decay: Math.random() * 0.015 + 0.008
+        });
+      }
+
+      if (!animationId) {
+        update();
+      }
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.45; // gravity
+        p.vx *= 0.98; // air resistance
+        p.rotation += p.rotationSpeed;
+        p.opacity -= p.decay;
+
+        if (p.opacity <= 0 || p.y > canvas.height + 50) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+        ctx.restore();
+      }
+
+      if (particles.length > 0) {
+        animationId = requestAnimationFrame(update);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        animationId = null;
+      }
+    }
+
+    window.triggerConfetti = triggerConfetti;
+  }
+
+
+  // -------------------------------------------------------------
+  // 22. AVAILABILITY & STATUS EASTER EGG
+  // -------------------------------------------------------------
+  function initAvailabilityEasterEgg() {
+    const statusPill = document.querySelector('.status-pill');
+    const brandDot = document.querySelector('.brand-status-dot');
+
+    function celebrateStatus() {
+      if (window.triggerConfetti) window.triggerConfetti();
+      soundEngine.play('success');
+      showToast('Shivam is currently available for full-time engineering roles & projects! 🚀', 'success');
+    }
+
+    if (statusPill) {
+      statusPill.style.cursor = 'pointer';
+      statusPill.title = 'Click to celebrate & see availability';
+      statusPill.addEventListener('click', celebrateStatus);
+    }
+    if (brandDot) {
+      brandDot.style.cursor = 'pointer';
+      brandDot.addEventListener('click', celebrateStatus);
+    }
   }
 
 })();
